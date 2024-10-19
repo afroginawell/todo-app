@@ -1,0 +1,1 @@
+java -jar ./todo-app-1.0.0.jar --spring.config.location=file:./application-pro.properties -Xmx512m -Xms256m

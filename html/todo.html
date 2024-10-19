@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ch-ZN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办</title>
+    <link rel="stylesheet" href="./bootstrap3.3.7/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <nav class="navbar navbar-default" role="navigation">
+        <div class="container-fluid" id="xx">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse"
+                        data-target="#example-navbar-collapse">
+                    <span class="sr-only">切换导航</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <span class="navbar-brand">待办</span>
+            </div>
+            <div class="collapse navbar-collapse" id="example-navbar-collapse">
+                <ul class="nav navbar-nav" style="float: right; height: 100%;">
+                    <li>
+                        <div style="padding-top: 10px;padding-bottom: 10px;line-height: 20px; padding-right: 5px">
+                            <button class="btn btn-info" onclick="buttonClick('all')">所有</button>
+                            <button class="btn btn-info" onclick="buttonClick('incomplete')">未完成</button>
+                            <button class="btn btn-info" onclick="buttonClick('complete')">已完成</button>
+                            <a id="modal-333550" href="#modal-container-333550" role="button" data-toggle="modal">
+                                <button class="btn btn-info">新增</button>
+                            </a>
+                            <div class="modal fade" id="modal-container-333550" role="dialog"
+                                 aria-labelledby="insertLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <button id='insertCloseButton' type="button" class="close"
+                                                    data-dismiss="modal" aria-hidden="true">
+                                                ×
+                                            </button>
+                                            <h4 class="modal-title" id="insertLabel">
+                                                新增待办
+                                            </h4>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form role="form" onsubmit="return false;">
+                                                <div class="form-group">
+                                                    <label for="insertTitle">概要</label><input
+                                                        type="text" class="form-control" id="insertTitle" required/>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="insertBody">内容</label>
+                                                    <textarea class="form-control" id="insertBody" rows="10"></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-default"
+                                                        onclick="insertButtonClick()">新增
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <a id="modal-333551" href="#modal-container-333551" role="button" data-toggle="modal">
+                                <button class="btn btn-info" onclick="clear1()">清空</button>
+                            </a>
+                            <div class="modal fade" id="modal-container-333551" role="dialog"
+                                 aria-labelledby="clearLabel">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <button type="button" class="close" data-dismiss="modal"
+                                                    id="clearCloseButton">
+                                                ×
+                                            </button>
+                                            <h4 class="modal-title" id="clearLabel">
+                                                清空待办
+                                            </h4>
+                                        </div>
+                                        <div class="modal-body">
+                                            <b>请注意, 清空操作会将当前所有待办内容删除, 是否确定清空? 继续操作请点击清空按钮,
+                                                退出操作请点击 × 。</b>
+                                            <br/>
+                                            <button type="button" class="btn btn-danger" onclick="clearButtonClick()"
+                                                    style="margin-top: 10px">清空
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </li>
+                    <li>
+                        <div style="padding-top: 10px;padding-bottom: 10px;line-height: 20px; padding-right: 5px">
+                            <form onsubmit="return false;">
+                                <input type="text" style="width: 230px; height: 32px" id="searchInput" required/>
+                                <button type="submit" class="btn btn-primary" onclick="buttonClick('search')">全文搜索
+                                </button>
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="panel-group" id="accordion">
+    </div>
+    <ul class="pagination" id="pagination" style="margin-top: 0">
+    </ul>
+</div>
+<script src="./jquery2.1.1/jquery.min.js"></script>
+<script src="./bootstrap3.3.7/bootstrap.min.js"></script>
+<script src="./custom/custom.js"></script>
+<script>
+    const url_prefix = '/api/todo'
+    const size = 20
+
+    window.onload = async function () {
+        sessionStorage.setItem('sortColumns', 'createAt');
+        sessionStorage.setItem('sortDirection', 'desc');
+        await buttonClick("incomplete")
+    };
+
+    async function buttonClick(name, page = 0) {
+        console.log(`name=${name}, page=${page}, size=${size}`)
+        sessionStorage.setItem('content', name);
+        const url = `${url_prefix}/${name}`
+        const body = {
+            "page": page,
+            "sortColumns": sessionStorage.getItem('sortColumns').split(","),
+            "sortDirection": sessionStorage.getItem('sortDirection'),
+            "size": size,
+        }
+        if (name === 'search') {
+            const searchInputElem = document.getElementById('searchInput')
+            body['search'] = searchInputElem.value
+        }
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body)
+        };
+
+        const response = await fetch(url, options);
+        const data = await response.json();
+        setPagination(data.pages)
+        setAccordion(data.body)
+
+
+    }
+
+    function setPagination(pages) {
+        const paginationElem = document.getElementById("pagination")
+        paginationElem.innerHTML = '';
+        const content = sessionStorage.getItem('content')
+        if (!pages) {
+            return
+        }
+        if (pages.first > -1) {
+            paginationElem.innerHTML += `<li><button class="btn btn-default btn-sm" onclick="buttonClick('${content}',${pages.first})">&laquo;</li>`;
+        }
+
+        if (pages.nums.length > 0) {
+            let nums = []
+            pages.nums.forEach((item, index) => {
+                nums[index] = item
+            })
+            nums.sort((a, b) => a - b);
+            nums.forEach((item, index) => {
+                paginationElem.innerHTML += `<li><button class="btn btn-default" onclick="buttonClick('${content}',${item})">${item + 1}</li>`;
+            })
+        }
+        if (pages.last > -1) {
+            paginationElem.innerHTML += `<li><button class="btn btn-default" onclick="buttonClick('${content}',${pages.last})">&raquo;</li>`;
+        }
+    }
+
+    function setAccordion(data) {
+        // 清空当前的手风琴内容
+        const accordion = document.getElementById('accordion');
+        accordion.innerHTML = '';
+        if (!data) {
+            return
+        }
+        // 解析 JSON 字符串
+        // 遍历每个项目并生成相应的 HTML
+        data.forEach((item, index) => {
+            // 创建面板的 HTML
+            let button1 = "";
+            let completeAt = ''
+            let title1 = item.title
+            if (`${item.status}` === '0') {
+                button1 = `<button value="${item.id}" onclick="completeButtonClick(this)" class="btn btn-default btn-sm">完成</button>`
+            } else {
+                completeAt = `<p>完成时间: ${item.completeAt}</p>`
+                title1 = `<del>${item.title}</del>`
+                button1 = `<button value="${item.id}" onclick="incompleteButtonClick(this)" class="btn btn-default btn-sm">未完成</button>`
+            }
+            const panel = `
+             <div class="panel panel-default" id="panel${item.id}">
+                 <div class="panel-heading">
+                     <h4 class="panel-title">
+                         <a id="title-${item.id}" data-toggle="collapse" data-parent="#accordion" href="#collapse${index}">
+                             ${title1}
+                         </a>
+                     </h4>
+                 </div>
+                 <div id="collapse${index}" class="panel-collapse collapse">
+                     <div style="margin-left: 15px;margin-top: 10px">
+                         <p>创建时间: ${item.createAt}</p>
+                         <p>内容: <span id="body-${item.id}">${item.body}</span></p>
+                         ${completeAt}
+                         <p style="display: none" id="status-${item.id}">${item.status}</p>
+                     </div>
+                     <div style="margin-top: 10px; margin-left: 15px; margin-bottom: 10px">
+                         <a id="update-model-${index}" href="#modal-container-update-model-${index}" role="button" data-toggle="modal">
+                            <button class="btn btn-default btn-sm">更新</button>
+                         </a>
+                         <div class="modal fade" id="modal-container-update-model-${index}" role="dialog"
+                              aria-labelledby="updateLabel-${index}" aria-hidden="true">
+                             <div class="modal-dialog">
+                                 <div class="modal-content">
+                                     <div class="modal-header">
+                                         <button type="button" class="close" data-dismiss="modal" aria-hidden="true" id="updateCloseButton-${item.id}">
+                                             ×
+                                         </button>
+                                         <h4 class="modal-title" id="updateLabel-${index}">
+                                             更新待办
+                                         </h4>
+                                     </div>
+                                     <div class="modal-body">
+                                         <form role="form" onsubmit="return false;">
+                                             <div class="form-group">
+                                                 <label for="updateTitle-${item.id}">概要</label><input
+                                                     type="text" class="form-control" id="updateTitle-${item.id}" value="${item.title}" required/>
+                                             </div>
+                                             <div class="form-group">
+                                                 <label for="updateBody-${item.id}">内容</label>
+                                                 <textarea class="form-control" id="updateBody-${item.id}" rows="10">${item.body}</textarea>
+                                             </div>
+                                             <button type="submit" class="btn btn-default" value="${item.id}" onclick="updateButtonClick(this)">更新</button>
+                                         </form>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                         ${button1}
+                         <button value="${item.id}" onclick="deleteButtonClick(this)" class="btn btn-danger btn-sm">删除</button>
+                     </div>
+                 </div>
+             </div>
+         `;
+            accordion.innerHTML += panel;
+        });
+    }
+
+    async function insertButtonClick() {
+        const insertTitleElem = document.getElementById('insertTitle')
+        const insertBodyElem = document.getElementById('insertBody')
+
+        const insertTitle = insertTitleElem.value
+        const insertBody = insertBodyElem.value
+
+        const url = `${url_prefix}/insert`
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "title": insertTitle,
+                "body": insertBody,
+            })
+        };
+        const response = await fetch(url, options);
+        $('#insertCloseButton').click()
+        location.reload();
+        alert("新增待办成功")
+    }
+
+    async function clearButtonClick() {
+        const content = sessionStorage.getItem('content')
+        const url = `${url_prefix}/clear`
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "content": content
+            })
+        };
+        const response = await fetch(url, options);
+        $('#clearCloseButton').click()
+        location.reload();
+        alert("清空 " + content + " 待办成功")
+    }
+
+    async function updateButtonClick(buttonElem) {
+        const id = buttonElem.value
+        const updateTitleElem = document.getElementById(`updateTitle-${id}`)
+        const updateBodyElem = document.getElementById(`updateBody-${id}`)
+
+        const updateTitle = updateTitleElem.value
+        const updateBody = updateBodyElem.value
+        const status1 = document.getElementById(`status-${id}`).innerText
+
+        const url = `${url_prefix}/update`
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "id": id,
+                "title": updateTitle,
+                "body": updateBody,
+                "status": status1
+            })
+        };
+        const response = await fetch(url, options);
+
+        $('#updateCloseButton-' + id).click()
+        location.reload();
+        alert("更新待办成功")
+    }
+
+    async function completeButtonClick(buttonElem) {
+        await updateStatus(buttonElem, 1)
+    }
+
+    async function incompleteButtonClick(buttonElem) {
+        await updateStatus(buttonElem, 0)
+    }
+
+    async function updateStatus(buttonElem, status) {
+        const id = buttonElem.value
+        const title = document.getElementById(`title-${id}`).innerText
+        const body = document.getElementById(`body-${id}`).innerText
+
+        const url = `${url_prefix}/update`
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "id": id,
+                "title": title,
+                "body": body,
+                "status": status
+            })
+        };
+        const response = await fetch(url, options);
+
+        location.reload();
+        alert("更新待办成功")
+    }
+
+    async function deleteButtonClick(buttonElem) {
+        const id = buttonElem.value
+        const url = `${url_prefix}/delete`
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "id": id,
+            })
+        };
+        const response = await fetch(url, options);
+
+        location.reload();
+        alert("删除待办成功")
+    }
+</script>
+
+
+</body>
+</html>
